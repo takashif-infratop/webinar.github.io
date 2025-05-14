@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kanban ToDo App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif; /* Tailwind's default sans-serif font */
+            background-color: #f4f5f7; /* Light gray background similar to Trello/Jira */
+        }
+        .kanban-column {
+            min-width: 280px; /* Minimum width for columns */
+            width: 280px;
+            max-width: 320px; /* Max width for columns */
+            background-color: #ebecf0; /* Light gray for columns */
+            border-radius: 8px; /* Rounded corners for columns */
+            padding: 12px;
+            margin: 0 8px; /* Spacing between columns */
+            height: fit-content; /* Column height adjusts to content */
+            max-height: calc(100vh - 120px); /* Max height to allow scrolling within column */
+            overflow-y: auto; /* Enable vertical scroll if content exceeds max height */
+        }
+        .kanban-card {
+            background-color: white;
+            border-radius: 4px;
+            padding: 12px;
+            margin-bottom: 8px;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            cursor: grab; /* Indicate draggable item */
+        }
+        .kanban-card:hover {
+            background-color: #f9fafb; /* Slightly lighter on hover */
+        }
+        .add-card-button {
+            color: #5e6c84; /* Text color for add card button */
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+        .add-card-button:hover {
+            background-color: #dfe1e6; /* Slightly darker background on hover */
+        }
+        .add-card-form {
+            display: none; /* Initially hidden */
+            margin-top: 8px;
+        }
+        .add-card-form textarea {
+            width: 100%;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            margin-bottom: 8px;
+            resize: vertical; /* Allow vertical resize */
+        }
+        .add-card-form button {
+            background-color: #0079bf; /* Blue similar to Trello */
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+        }
+        .add-card-form button:hover {
+            background-color: #005a8c;
+        }
+        .cancel-add-card {
+            margin-left: 8px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            color: #5e6c84;
+        }
+        .column-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-weight: 600;
+            color: #172b4d; /* Darker text for column titles */
+        }
+        .column-header-icons i {
+            margin-left: 8px;
+            cursor: pointer;
+            color: #5e6c84;
+        }
+        .column-header-icons i:hover {
+            color: #172b4d;
+        }
+        /* Custom scrollbar for webkit browsers */
+        .kanban-column::-webkit-scrollbar {
+            width: 8px;
+        }
+        .kanban-column::-webkit-scrollbar-track {
+            background: #ebecf0; /* Same as column background */
+            border-radius: 8px;
+        }
+        .kanban-column::-webkit-scrollbar-thumb {
+            background: #c4c9d2; /* Scrollbar thumb color */
+            border-radius: 8px;
+        }
+        .kanban-column::-webkit-scrollbar-thumb:hover {
+            background: #a5acb8; /* Darker thumb on hover */
+        }
+        .dragging {
+            opacity: 0.5;
+            background: #cce5ff; /* Light blue background when dragging */
+        }
+    </style>
+</head>
+<body class="bg-blue-600 text-gray-800 flex flex-col h-screen">
+
+    <header class="bg-blue-700 text-white p-4 flex justify-between items-center shadow-md">
+        <div class="flex items-center">
+            <span class="text-lg font-semibold mr-4">snさん</span>
+            <h1 class="text-2xl font-bold">kanban</h1>
+        </div>
+        <div>
+            <a href="#" class="text-sm hover:bg-blue-600 px-3 py-2 rounded-md"><i class="fas fa-plus mr-1"></i> リストを作成</a>
+            <a href="#" class="text-sm hover:bg-blue-600 px-3 py-2 rounded-md"><i class="fas fa-sign-out-alt mr-1"></i> サインアウト</a>
+        </div>
+    </header>
+
+    <main class="flex-grow p-4 overflow-x-auto">
+        <div id="kanbanBoard" class="flex">
+            </div>
+    </main>
+
+    <script>
+        // Initial data for the Kanban board
+        const initialBoardData = [
+            {
+                id: "todo",
+                title: "ToDo",
+                cards: [
+                    { id: "card-1", text: "Docker について学ぶ" },
+                    { id: "card-2", text: "Web サーバーの知識を得る" },
+                    { id: "card-3", text: "WebSocket について学ぶ" },
+                    { id: "card-4", text: "検索エンジンについて学ぶ" },
+                    { id: "card-5", text: "Go を学ぶ" },
+                    { id: "card-6", text: "セキュリティについて学ぶ" }
+                ]
+            },
+            {
+                id: "inprogress",
+                title: "In Progress",
+                cards: [
+                    { id: "card-7", text: "ネットワークについて学ぶ" },
+                    { id: "card-8", text: "キャッシュを学ぶ" },
+                    { id: "card-9", text: "RESTful API を作る" },
+                    { id: "card-10", text: "Python を学ぶ" }
+                ]
+            },
+            {
+                id: "done",
+                title: "Done",
+                cards: [
+                    { id: "card-11", text: "AWS を使ってデプロイする" },
+                    { id: "card-12", text: "テストについて学ぶ" },
+                    { id: "card-13", text: "Node.js を学ぶ" }
+                ]
+            },
+            {
+                id: "archive",
+                title: "Archive",
+                cards: []
+            }
+        ];
+
+        // Function to generate a unique ID for cards
+        function generateId() {
+            return 'card-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+        }
+
+        // Function to render a single card
+        function renderCard(cardData) {
+            const cardElement = document.createElement('div');
+            cardElement.id = cardData.id;
+            cardElement.classList.add('kanban-card');
+            cardElement.draggable = true; // Make card draggable
+            cardElement.textContent = cardData.text;
+
+            // Drag and drop event listeners for cards
+            cardElement.addEventListener('dragstart', (event) => {
+                event.dataTransfer.setData('text/plain', event.target.id);
+                event.target.classList.add('dragging');
+                console.log('Drag start:', event.target.id);
+            });
+
+            cardElement.addEventListener('dragend', (event) => {
+                event.target.classList.remove('dragging');
+                console.log('Drag end:', event.target.id);
+            });
+
+            return cardElement;
+        }
+
+        // Function to render a single column
+        function renderColumn(columnData) {
+            const columnContainer = document.createElement('div');
+            columnContainer.classList.add('kanban-column');
+            columnContainer.dataset.columnId = columnData.id; // Store column ID
+
+            // Column Header
+            const columnHeader = document.createElement('div');
+            columnHeader.classList.add('column-header');
+            columnHeader.innerHTML = `
+                <span>${columnData.title}</span>
+                <div class="column-header-icons">
+                    <i class="fas fa-ellipsis-h"></i>
+                    <i class="fas fa-plus"></i>
+                </div>
+            `;
+            columnContainer.appendChild(columnHeader);
+
+            // Cards Container
+            const cardsContainer = document.createElement('div');
+            cardsContainer.classList.add('cards-container');
+            columnData.cards.forEach(card => {
+                cardsContainer.appendChild(renderCard(card));
+            });
+            columnContainer.appendChild(cardsContainer);
+
+            // "Add Card" Button
+            const addCardButton = document.createElement('div');
+            addCardButton.classList.add('add-card-button');
+            addCardButton.innerHTML = `<i class="fas fa-plus mr-2"></i> さらにカードを追加`;
+            columnContainer.appendChild(addCardButton);
+
+            // "Add Card" Form (initially hidden)
+            const addCardForm = document.createElement('div');
+            addCardForm.classList.add('add-card-form');
+            addCardForm.innerHTML = `
+                <textarea placeholder="このカードのタイトルを入力..."></textarea>
+                <button type="button">カードを追加</button>
+                <i class="fas fa-times cancel-add-card"></i>
+            `;
+            columnContainer.appendChild(addCardForm);
+
+            // Event listener for "Add Card" button
+            addCardButton.addEventListener('click', () => {
+                addCardButton.style.display = 'none';
+                addCardForm.style.display = 'block';
+                addCardForm.querySelector('textarea').focus();
+            });
+
+            // Event listener for "Cancel" in add card form
+            addCardForm.querySelector('.cancel-add-card').addEventListener('click', () => {
+                addCardForm.style.display = 'none';
+                addCardButton.style.display = 'flex';
+                addCardForm.querySelector('textarea').value = ''; // Clear textarea
+            });
+
+            // Event listener for "Add Card" submit in form
+            addCardForm.querySelector('button').addEventListener('click', () => {
+                const textarea = addCardForm.querySelector('textarea');
+                const cardText = textarea.value.trim();
+                if (cardText) {
+                    const newCardData = { id: generateId(), text: cardText };
+                    // Find the column data in initialBoardData and add the card
+                    const columnIndex = initialBoardData.findIndex(col => col.id === columnData.id);
+                    if (columnIndex !== -1) {
+                        initialBoardData[columnIndex].cards.push(newCardData);
+                    }
+                    cardsContainer.appendChild(renderCard(newCardData));
+                    textarea.value = ''; // Clear textarea
+                    addCardForm.style.display = 'none';
+                    addCardButton.style.display = 'flex';
+                }
+            });
+            
+            // Drag and drop event listeners for columns (for dropping cards)
+            columnContainer.addEventListener('dragover', (event) => {
+                event.preventDefault(); // Necessary to allow dropping
+                const draggingCard = document.querySelector('.dragging');
+                if (draggingCard && event.currentTarget.contains(draggingCard)) {
+                    return; // Don't do anything if dragging over the same column
+                }
+                const afterElement = getDragAfterElement(cardsContainer, event.clientY);
+                if (afterElement == null) {
+                    cardsContainer.appendChild(draggingCard);
+                } else {
+                    cardsContainer.insertBefore(draggingCard, afterElement);
+                }
+            });
+
+            columnContainer.addEventListener('drop', (event) => {
+                event.preventDefault();
+                const cardId = event.dataTransfer.getData('text/plain');
+                const draggedCard = document.getElementById(cardId);
+                const targetColumnId = columnContainer.dataset.columnId;
+                const sourceColumnId = draggedCard.closest('.kanban-column').dataset.columnId;
+
+                console.log(`Dropped card ${cardId} into column ${targetColumnId} from ${sourceColumnId}`);
+
+                // Update data model (simplified for now)
+                // In a real app, you'd update initialBoardData and re-render or directly manipulate
+                const cardDataText = draggedCard.textContent; // Or get from a data attribute
+                
+                // Remove from old column data
+                const sourceColIndex = initialBoardData.findIndex(col => col.id === sourceColumnId);
+                if (sourceColIndex !== -1) {
+                    const cardIndex = initialBoardData[sourceColIndex].cards.findIndex(c => c.id === cardId);
+                    if (cardIndex !== -1) {
+                        initialBoardData[sourceColIndex].cards.splice(cardIndex, 1);
+                    }
+                }
+
+                // Add to new column data
+                const targetColIndex = initialBoardData.findIndex(col => col.id === targetColumnId);
+                if (targetColIndex !== -1) {
+                     // Determine position to insert
+                    const afterElement = getDragAfterElement(cardsContainer, event.clientY);
+                    const newCardData = { id: cardId, text: cardDataText }; // Recreate card data
+                    
+                    let insertAtIndex = initialBoardData[targetColIndex].cards.length; // Default to end
+                    if (afterElement) {
+                        const afterElementId = afterElement.id;
+                        insertAtIndex = initialBoardData[targetColIndex].cards.findIndex(c => c.id === afterElementId);
+                    }
+                    initialBoardData[targetColIndex].cards.splice(insertAtIndex, 0, newCardData);
+                }
+                
+                // Append to the new visual column (already handled by dragover if simple append)
+                // If not simply appending, ensure the DOM reflects the new order.
+                // The current dragover logic already places it visually.
+                // We just need to ensure the data model is consistent.
+
+                console.log("Updated board data:", JSON.parse(JSON.stringify(initialBoardData))); // Deep copy for logging
+            });
+
+
+            return columnContainer;
+        }
+
+        // Function to determine where to insert a dragged card
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.kanban-card:not(.dragging)')];
+
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+
+        // Function to render the entire board
+        function renderBoard() {
+            const boardElement = document.getElementById('kanbanBoard');
+            boardElement.innerHTML = ''; // Clear existing board
+            initialBoardData.forEach(column => {
+                boardElement.appendChild(renderColumn(column));
+            });
+        }
+
+        // Initial render of the board
+        document.addEventListener('DOMContentLoaded', renderBoard);
+    </script>
+</body>
+</html>

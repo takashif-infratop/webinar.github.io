@@ -3,454 +3,404 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VALUE NAVIGATOR - AIG</title>
+    <title>Kanban ToDo App</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
+            background-color: #f4f5f7;
         }
-        /* カスタムスタイル */
-        .hero-bg {
-            background-color: #0f172a; /* ダークブルー系の背景 */
+        .kanban-column {
+            min-width: 280px;
+            width: 280px;
+            max-width: 320px;
+            background-color: #ebecf0;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 0 8px;
+            height: fit-content;
+            max-height: calc(100vh - 120px); /* Header height + padding */
+            overflow-y: auto;
         }
-        .section-title {
-            font-weight: 900; /* Extra Bold or Black */
-            font-size: 2.25rem; /* text-4xl */
-            margin-bottom: 1.5rem; /* mb-6 */
-            text-align: center;
-        }
-        .card {
+        .kanban-card {
             background-color: white;
-            border-radius: 0.75rem; /* rounded-xl */
-            padding: 1.5rem; /* p-6 */
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
-            transition: transform 0.3s ease;
+            border-radius: 4px;
+            padding: 12px;
+            margin-bottom: 8px;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            cursor: grab;
         }
-        .card:hover {
-            transform: translateY(-5px);
+        .kanban-card:hover {
+            background-color: #f9fafb;
         }
-        .btn {
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.5rem; /* rounded-lg */
-            font-weight: 600; /* font-semibold */
-            transition: background-color 0.3s ease;
-            text-align: center;
+        .add-card-button {
+            color: #5e6c84;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
         }
-        .btn-primary {
-            background-color: #f59e0b; /* amber-500 */
+        .add-card-button:hover {
+            background-color: #dfe1e6;
+        }
+        .add-card-form {
+            display: none;
+            margin-top: 8px;
+        }
+        .add-card-form textarea {
+            width: 100%;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            margin-bottom: 8px;
+            resize: vertical;
+        }
+        .add-card-form button {
+            background-color: #0079bf;
             color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
         }
-        .btn-primary:hover {
-            background-color: #d97706; /* amber-600 */
+        .add-card-form button:hover {
+            background-color: #005a8c;
         }
-        .btn-secondary {
-            background-color: #e5e7eb; /* gray-200 */
-            color: #1f2937; /* gray-800 */
+        .cancel-add-card {
+            margin-left: 8px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            color: #5e6c84;
         }
-        .btn-secondary:hover {
-            background-color: #d1d5db; /* gray-300 */
+        .column-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-weight: 600;
+            color: #172b4d;
         }
-        .highlight-text {
-            color: #f59e0b; /* amber-500 */
-            font-weight: 700;
+        .column-header-icons i {
+            margin-left: 8px;
+            cursor: pointer;
+            color: #5e6c84;
         }
-        .blue-gradient-bg {
-            background: linear-gradient(to right, #3b82f6, #1e40af); /* 青系のグラデーション */
+        .column-header-icons i:hover {
+            color: #172b4d;
         }
-        .dark-section-bg {
-            background-color: #1e293b; /* スレート-800 */
-            color: #f8fafc; /* スレート-50 */
+        .kanban-column::-webkit-scrollbar {
+            width: 8px;
         }
-        .light-text {
-            color: #cbd5e1; /* スレート-300 */
+        .kanban-column::-webkit-scrollbar-track {
+            background: #ebecf0;
+            border-radius: 8px;
+        }
+        .kanban-column::-webkit-scrollbar-thumb {
+            background: #c4c9d2;
+            border-radius: 8px;
+        }
+        .kanban-column::-webkit-scrollbar-thumb:hover {
+            background: #a5acb8;
+        }
+        .dragging {
+            opacity: 0.5;
+            background: #cce5ff;
         }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800">
+<body class="bg-blue-600 text-gray-800 flex flex-col h-screen">
 
-    <header class="sticky top-0 z-50 bg-white shadow-md">
-        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
-            <div class="text-3xl font-black text-slate-700">
-                AIG <span class="text-amber-500">VALUE</span> NAVIGATOR
-            </div>
-            <nav class="space-x-6">
-                <a href="#value" class="text-slate-600 hover:text-amber-500 font-medium">VALUE</a>
-                <a href="#navigator" class="text-slate-600 hover:text-amber-500 font-medium">NAVIGATOR</a>
-                <a href="#service" class="text-slate-600 hover:text-amber-500 font-medium">SERVICE</a>
-                <a href="#how-to-use" class="text-slate-600 hover:text-amber-500 font-medium">HOW TO USE</a>
-                <a href="#use-case" class="text-slate-600 hover:text-amber-500 font-medium">USE CASE</a>
-                <a href="#price" class="text-slate-600 hover:text-amber-500 font-medium">PRICE</a>
-                <a href="#faq" class="text-slate-600 hover:text-amber-500 font-medium">FAQ</a>
-                <a href="#contact" class="btn btn-primary">お問い合わせ</a>
-            </nav>
+    <header class="bg-blue-700 text-white p-4 flex justify-between items-center shadow-md">
+        <div class="flex items-center">
+            <span class="text-lg font-semibold mr-4">snさん</span>
+            <h1 class="text-2xl font-bold">kanban</h1>
+        </div>
+        <div>
+            <a href="#" id="createListButton" class="text-sm hover:bg-blue-600 px-3 py-2 rounded-md"><i class="fas fa-plus mr-1"></i> リストを作成</a>
+            <a href="#" class="text-sm hover:bg-blue-600 px-3 py-2 rounded-md"><i class="fas fa-sign-out-alt mr-1"></i> サインアウト</a>
         </div>
     </header>
 
-    <section class="hero-bg text-white py-20 md:py-32">
-        <div class="container mx-auto px-6 text-center">
-            <h1 class="text-5xl md:text-7xl font-black mb-6 leading-tight">
-                未来をナビゲートする<br class="md:hidden"> <span class="text-amber-400">VALUE NAVIGATOR</span>
-            </h1>
-            <p class="text-lg md:text-xl text-slate-300 mb-10 max-w-3xl mx-auto">
-                革新的なAI技術で、あなたのビジネスの潜在価値を最大限に引き出し、成功へと導きます。価値創造の新しい羅針盤を手に入れましょう。
-            </p>
-            <div class="space-x-4">
-                <a href="#service" class="btn btn-primary text-lg px-8 py-4">サービス詳細へ</a>
-                <a href="#contact" class="btn btn-secondary text-lg px-8 py-4 bg-white text-slate-800 hover:bg-slate-100">無料相談はこちら</a>
+    <main class="flex-grow p-4 overflow-x-auto">
+        <div id="kanbanBoard" class="flex">
             </div>
-            <div class="mt-16">
-                <img src="https://placehold.co/800x450/1e293b/e2e8f0?text=ダッシュボードのイメージ" alt="ダッシュボードのイメージ" class="mx-auto rounded-xl shadow-2xl">
-            </div>
-        </div>
-    </section>
-
-    <section id="value" class="py-16 md:py-24 bg-white">
-        <div class="container mx-auto px-6">
-            <h2 class="section-title text-slate-800">VALUE<span class="text-amber-500">.</span></h2>
-            <p class="text-center text-slate-600 mb-12 md:mb-16 max-w-2xl mx-auto">
-                VALUE NAVIGATORが提供する3つのコアバリュー。これらを通じて、お客様のビジネス成長を加速させます。
-            </p>
-            <div class="grid md:grid-cols-3 gap-8">
-                <div class="card text-center items-center flex flex-col">
-                    <div class="bg-amber-500 text-white rounded-full w-16 h-16 flex items-center justify-center text-2xl font-bold mb-6">01</div>
-                    <h3 class="text-2xl font-bold text-slate-700 mb-3">データ駆動型の意思決定</h3>
-                    <p class="text-slate-600 leading-relaxed">
-                        高度なAI分析により、膨大なデータから洞察を抽出。勘や経験に頼らない、客観的根拠に基づいた戦略立案を支援します。
-                    </p>
-                    <img src="https://placehold.co/300x200/e0e7ff/4338ca?text=価値1のイメージ" alt="価値1のイメージ" class="mt-6 rounded-lg">
-                </div>
-                <div class="card text-center items-center flex flex-col">
-                    <div class="bg-sky-500 text-white rounded-full w-16 h-16 flex items-center justify-center text-2xl font-bold mb-6">02</div>
-                    <h3 class="text-2xl font-bold text-slate-700 mb-3">業務効率の大幅向上</h3>
-                    <p class="text-slate-600 leading-relaxed">
-                        ルーチンワークを自動化し、人的ミスを削減。コア業務に集中できる環境を創出し、生産性を飛躍的に高めます。
-                    </p>
-                    <img src="https://placehold.co/300x200/cffafe/0e7490?text=価値2のイメージ" alt="価値2のイメージ" class="mt-6 rounded-lg">
-                </div>
-                <div class="card text-center items-center flex flex-col">
-                    <div class="bg-emerald-500 text-white rounded-full w-16 h-16 flex items-center justify-center text-2xl font-bold mb-6">03</div>
-                    <h3 class="text-2xl font-bold text-slate-700 mb-3">新たな収益機会の創出</h3>
-                    <p class="text-slate-600 leading-relaxed">
-                        市場トレンドや顧客ニーズをAIが予測。隠れたビジネスチャンスを発見し、競争優位性を確立します。
-                    </p>
-                    <img src="https://placehold.co/300x200/d1fae5/059669?text=価値3のイメージ" alt="価値3のイメージ" class="mt-6 rounded-lg">
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section id="navigator" class="py-16 md:py-24 dark-section-bg">
-        <div class="container mx-auto px-6">
-            <h2 class="section-title text-white">NAVIGATOR<span class="text-amber-400">.</span></h2>
-            <p class="text-center light-text mb-12 md:mb-16 max-w-2xl mx-auto">
-                経験豊富なナビゲーターが、VALUE NAVIGATORの導入から活用まで、お客様を徹底サポートします。
-            </p>
-            <div class="grid md:grid-cols-2 gap-10 md:gap-16 items-center">
-                <div class="text-center md:text-left">
-                    <img src="https://placehold.co/150x150/64748b/e2e8f0?text=OZAWA" alt="OZAWA KENSUKE" class="w-40 h-40 md:w-48 md:h-48 rounded-full mx-auto md:mx-0 mb-6 border-4 border-amber-400">
-                    <h3 class="text-3xl font-bold text-white mb-1">OZAWA KENSUKE</h3>
-                    <p class="text-amber-400 font-semibold text-lg mb-3">チーフAIストラテジスト</p>
-                    <p class="light-text leading-relaxed">
-                        AI技術のビジネス応用における第一人者。複雑な課題をシンプルに解決し、多くの企業のDXを成功に導いてきた実績を持つ。趣味は最新技術トレンドの探求と、週末のハイキング。
-                    </p>
-                </div>
-                <div class="text-center md:text-left">
-                    <img src="https://placehold.co/150x150/64748b/e2e8f0?text=ICAVA" alt="ICAVA TAKAAKI" class="w-40 h-40 md:w-48 md:h-48 rounded-full mx-auto md:mx-0 mb-6 border-4 border-sky-400">
-                    <h3 class="text-3xl font-bold text-white mb-1">ICAVA TAKAAKI</h3>
-                    <p class="text-sky-400 font-semibold text-lg mb-3">リードデータサイエンティスト</p>
-                    <p class="light-text leading-relaxed">
-                        データ分析と機械学習モデル構築のエキスパート。お客様のビジネスに最適化されたAIソリューションを提供し、具体的な成果創出を支援。休日は愛猫とのんびり過ごす。
-                    </p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section id="service" class="py-16 md:py-24 bg-slate-100">
-        <div class="container mx-auto px-6">
-            <h2 class="section-title text-slate-800">SERVICE<span class="text-amber-500">.</span></h2>
-            <p class="text-center text-slate-600 mb-12 md:mb-16 max-w-2xl mx-auto">
-                VALUE NAVIGATORは、お客様のニーズに合わせてカスタマイズ可能な、多機能AIプラットフォームです。
-            </p>
-            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <div class="card">
-                    <div class="flex items-center mb-4">
-                        <svg class="w-12 h-12 text-amber-500 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                        <h3 class="text-xl font-semibold text-slate-700">AI市場分析レポート</h3>
-                    </div>
-                    <p class="text-slate-600 leading-relaxed">リアルタイム市場データとAI予測を組み合わせ、競合分析やトレンド把握を強力にサポートします。</p>
-                </div>
-                <div class="card">
-                    <div class="flex items-center mb-4">
-                        <svg class="w-12 h-12 text-sky-500 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                        <h3 class="text-xl font-semibold text-slate-700">AI業務自動化ツール</h3>
-                    </div>
-                    <p class="text-slate-600 leading-relaxed">定型業務やデータ入力作業をAIが代行。人的リソースをより創造的な業務へシフトさせます。</p>
-                </div>
-                <div class="card">
-                    <div class="flex items-center mb-4">
-                        <svg class="w-12 h-12 text-emerald-500 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
-                        <h3 class="text-xl font-semibold text-slate-700">AIパーソナライズエンジン</h3>
-                    </div>
-                    <p class="text-slate-600 leading-relaxed">顧客データに基づき、一人ひとりに最適化された商品推薦や情報提供を実現します。</p>
-                </div>
-                <div class="card">
-                     <div class="flex items-center mb-4">
-                        <svg class="w-12 h-12 text-indigo-500 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"></path></svg>
-                        <h3 class="text-xl font-semibold text-slate-700">AI予測分析ダッシュボード</h3>
-                    </div>
-                    <p class="text-slate-600 leading-relaxed">売上予測、需要予測などを可視化。将来を見据えた経営戦略の策定を支援します。</p>
-                </div>
-                 <div class="card">
-                    <div class="flex items-center mb-4">
-                        <svg class="w-12 h-12 text-pink-500 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z"></path></svg>
-                        <h3 class="text-xl font-semibold text-slate-700">AIチャットボット導入支援</h3>
-                    </div>
-                    <p class="text-slate-600 leading-relaxed">顧客対応の自動化と品質向上を実現。24時間365日、スムーズなサポートを提供します。</p>
-                </div>
-                 <div class="card">
-                    <div class="flex items-center mb-4">
-                        <svg class="w-12 h-12 text-purple-500 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                        <h3 class="text-xl font-semibold text-slate-700">カスタムAIモデル開発</h3>
-                    </div>
-                    <p class="text-slate-600 leading-relaxed">お客様固有の課題解決のため、オーダーメイドのAIモデルを設計・開発します。</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section id="how-to-use" class="py-16 md:py-24 bg-white">
-        <div class="container mx-auto px-6">
-            <h2 class="section-title text-slate-800">HOW TO USE<span class="text-amber-500">.</span></h2>
-            <p class="text-center text-slate-600 mb-12 md:mb-16 max-w-2xl mx-auto">
-                簡単なステップでVALUE NAVIGATORをご利用いただけます。専門知識は不要です。
-            </p>
-            <div class="grid md:grid-cols-3 gap-8">
-                <div class="card flex items-start">
-                    <div class="text-amber-500 text-4xl font-black mr-6">01</div>
-                    <div>
-                        <h3 class="text-xl font-semibold text-slate-700 mb-2">お問い合わせ・ヒアリング</h3>
-                        <p class="text-slate-600 leading-relaxed">まずはお気軽にご相談ください。お客様の課題や目標を詳しく伺います。</p>
-                    </div>
-                </div>
-                <div class="card flex items-start">
-                    <div class="text-sky-500 text-4xl font-black mr-6">02</div>
-                    <div>
-                        <h3 class="text-xl font-semibold text-slate-700 mb-2">ご提案・カスタマイズ</h3>
-                        <p class="text-slate-600 leading-relaxed">ヒアリング内容に基づき、最適なプランとAIソリューションをご提案します。</p>
-                    </div>
-                </div>
-                <div class="card flex items-start">
-                    <div class="text-emerald-500 text-4xl font-black mr-6">03</div>
-                    <div>
-                        <h3 class="text-xl font-semibold text-slate-700 mb-2">導入・運用サポート</h3>
-                        <p class="text-slate-600 leading-relaxed">専門チームが導入から運用まで伴走。効果測定と改善も継続的に行います。</p>
-                    </div>
-                </div>
-            </div>
-             <div class="text-center mt-12">
-                <a href="#contact" class="btn btn-primary text-lg">今すぐ相談する</a>
-            </div>
-        </div>
-    </section>
-
-    <section id="use-case" class="py-16 md:py-24 dark-section-bg">
-        <div class="container mx-auto px-6">
-            <h2 class="section-title text-white">USE CASE<span class="text-amber-400">.</span></h2>
-            <p class="text-center light-text mb-12 md:mb-16 max-w-2xl mx-auto">
-                様々な業界・業種でVALUE NAVIGATORが活用され、成果を上げています。
-            </p>
-            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <div class="bg-slate-700 p-6 rounded-xl shadow-lg">
-                    <img src="https://placehold.co/350x200/334155/e2e8f0?text=小売業の事例" alt="小売業の事例" class="rounded-lg mb-4 w-full">
-                    <h3 class="text-xl font-semibold text-white mb-2">小売業：AIによる需要予測で在庫最適化</h3>
-                    <p class="light-text text-sm leading-relaxed">天候やイベント情報も加味した高精度な需要予測により、機会損失と廃棄ロスを大幅に削減。利益率が15%向上。</p>
-                </div>
-                <div class="bg-slate-700 p-6 rounded-xl shadow-lg">
-                    <img src="https://placehold.co/350x200/334155/e2e8f0?text=製造業の事例" alt="製造業の事例" class="rounded-lg mb-4 w-full">
-                    <h3 class="text-xl font-semibold text-white mb-2">製造業：AI画像認識で不良品検知率向上</h3>
-                    <p class="light-text text-sm leading-relaxed">熟練作業員の目視検査をAIが代替・支援。検知精度99.5%を達成し、品質管理コストを30%削減。</p>
-                </div>
-                <div class="bg-slate-700 p-6 rounded-xl shadow-lg">
-                    <img src="https://placehold.co/350x200/334155/e2e8f0?text=金融機関の事例" alt="金融機関の事例" class="rounded-lg mb-4 w-full">
-                    <h3 class="text-xl font-semibold text-white mb-2">金融機関：AIによる不正取引検知</h3>
-                    <p class="light-text text-sm leading-relaxed">パターン認識と異常検知AIを活用し、不正取引の早期発見と未然防止に貢献。セキュリティレベルが大幅に向上。</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section id="price" class="py-16 md:py-24 bg-white">
-        <div class="container mx-auto px-6">
-            <h2 class="section-title text-slate-800">PRICE<span class="text-amber-500">.</span></h2>
-            <p class="text-center text-slate-600 mb-12 md:mb-16 max-w-2xl mx-auto">
-                お客様のビジネス規模やニーズに合わせた、柔軟な料金プランをご用意しています。
-            </p>
-            <div class="grid md:grid-cols-3 gap-8">
-                <div class="card border-2 border-slate-200">
-                    <h3 class="text-2xl font-bold text-slate-700 mb-2">ベーシックプラン</h3>
-                    <p class="text-slate-500 mb-6">小規模事業者様向け</p>
-                    <div class="text-4xl font-black text-slate-800 mb-1">¥50,000<span class="text-xl font-semibold">/月</span></div>
-                    <p class="text-slate-500 mb-6">(税別)</p>
-                    <ul class="space-y-3 text-slate-600 mb-8">
-                        <li class="flex items-center"><svg class="w-5 h-5 text-emerald-500 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>AI分析レポート（月1回）</li>
-                        <li class="flex items-center"><svg class="w-5 h-5 text-emerald-500 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>基本AIツールアクセス</li>
-                        <li class="flex items-center"><svg class="w-5 h-5 text-emerald-500 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>メールサポート</li>
-                    </ul>
-                    <button class="btn btn-secondary w-full">詳しく見る</button>
-                </div>
-                <div class="card border-2 border-amber-500 relative">
-                    <span class="absolute top-0 right-0 bg-amber-500 text-white text-xs font-semibold px-3 py-1 rounded-bl-lg rounded-tr-lg">おすすめ</span>
-                    <h3 class="text-2xl font-bold text-amber-500 mb-2">スタンダードプラン</h3>
-                    <p class="text-slate-500 mb-6">中規模事業者様向け</p>
-                    <div class="text-4xl font-black text-slate-800 mb-1">¥150,000<span class="text-xl font-semibold">/月</span></div>
-                    <p class="text-slate-500 mb-6">(税別)</p>
-                    <ul class="space-y-3 text-slate-600 mb-8">
-                        <li class="flex items-center"><svg class="w-5 h-5 text-emerald-500 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>AI分析レポート（週1回）</li>
-                        <li class="flex items-center"><svg class="w-5 h-5 text-emerald-500 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>全AIツールアクセス</li>
-                        <li class="flex items-center"><svg class="w-5 h-5 text-emerald-500 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>電話・メールサポート</li>
-                        <li class="flex items-center"><svg class="w-5 h-5 text-emerald-500 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>専任担当者サポート</li>
-                    </ul>
-                    <button class="btn btn-primary w-full">詳しく見る</button>
-                </div>
-                <div class="card border-2 border-slate-200">
-                    <h3 class="text-2xl font-bold text-slate-700 mb-2">エンタープライズプラン</h3>
-                    <p class="text-slate-500 mb-6">大規模事業者様・特殊要件向け</p>
-                    <div class="text-4xl font-black text-slate-800 mb-1">個別見積</div>
-                    <p class="text-slate-500 mb-6">&nbsp;</p> <ul class="space-y-3 text-slate-600 mb-8">
-                        <li class="flex items-center"><svg class="w-5 h-5 text-emerald-500 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>全機能フルカスタマイズ</li>
-                        <li class="flex items-center"><svg class="w-5 h-5 text-emerald-500 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>カスタムAIモデル開発</li>
-                        <li class="flex items-center"><svg class="w-5 h-5 text-emerald-500 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>24/365プレミアムサポート</li>
-                    </ul>
-                    <button class="btn btn-secondary w-full">お問い合わせ</button>
-                </div>
-            </div>
-            <p class="text-center text-sm text-slate-500 mt-8">※上記は標準的なプランです。お客様のご要望に応じて柔軟に対応いたしますので、お気軽にご相談ください。</p>
-        </div>
-    </section>
-
-    <section id="faq" class="py-16 md:py-24 bg-slate-100">
-        <div class="container mx-auto px-6">
-            <h2 class="section-title text-slate-800">FAQ<span class="text-amber-500">.</span></h2>
-            <p class="text-center text-slate-600 mb-12 md:mb-16 max-w-2xl mx-auto">
-                よくあるご質問とその回答をまとめました。
-            </p>
-            <div class="max-w-3xl mx-auto">
-                <details class="bg-white p-6 rounded-lg shadow-md mb-4 group">
-                    <summary class="font-semibold text-lg text-slate-700 cursor-pointer flex justify-between items-center group-open:text-amber-500">
-                        AIの専門知識がなくても利用できますか？
-                        <svg class="w-5 h-5 transform group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                    </summary>
-                    <p class="text-slate-600 mt-4 leading-relaxed">
-                        はい、問題ありません。VALUE NAVIGATORは直感的に操作できるインターフェースを備えており、専門知識がない方でも簡単にご利用いただけます。また、導入から運用まで弊社の専門スタッフが丁寧にサポートいたしますのでご安心ください。
-                    </p>
-                </details>
-                <details class="bg-white p-6 rounded-lg shadow-md mb-4 group">
-                    <summary class="font-semibold text-lg text-slate-700 cursor-pointer flex justify-between items-center group-open:text-amber-500">
-                        導入までにかかる期間はどれくらいですか？
-                        <svg class="w-5 h-5 transform group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                    </summary>
-                    <p class="text-slate-600 mt-4 leading-relaxed">
-                        お客様の状況やプランによって異なりますが、標準的なプランであれば最短で2週間程度での導入が可能です。詳細なスケジュールについては、ヒアリング後にお伝えいたします。
-                    </p>
-                </details>
-                <details class="bg-white p-6 rounded-lg shadow-md mb-4 group">
-                    <summary class="font-semibold text-lg text-slate-700 cursor-pointer flex justify-between items-center group-open:text-amber-500">
-                        どのようなデータが必要になりますか？
-                        <svg class="w-5 h-5 transform group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                    </summary>
-                    <p class="text-slate-600 mt-4 leading-relaxed">
-                        活用するAI機能や分析内容によって必要なデータは異なります。一般的には、売上データ、顧客データ、ウェブサイトのアクセスログなどが考えられます。どのようなデータが活用可能か、またデータの収集方法についてもサポートいたします。
-                    </p>
-                </details>
-                 <details class="bg-white p-6 rounded-lg shadow-md group">
-                    <summary class="font-semibold text-lg text-slate-700 cursor-pointer flex justify-between items-center group-open:text-amber-500">
-                        セキュリティ対策は万全ですか？
-                        <svg class="w-5 h-5 transform group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                    </summary>
-                    <p class="text-slate-600 mt-4 leading-relaxed">
-                        はい、お客様の大切なデータを守るため、業界最高水準のセキュリティ対策を講じています。データの暗号化、アクセス制御、定期的な脆弱性診断など、多層的な防御策を実施しておりますので、安心してご利用いただけます。
-                    </p>
-                </details>
-            </div>
-        </div>
-    </section>
-
-    <section id="contact" class="py-16 md:py-24 blue-gradient-bg text-white">
-        <div class="container mx-auto px-6 text-center">
-            <h2 class="text-4xl md:text-5xl font-black mb-6">さあ、始めましょう。</h2>
-            <p class="text-lg md:text-xl text-slate-200 mb-10 max-w-2xl mx-auto">
-                VALUE NAVIGATORが、あなたのビジネスを次のステージへ導きます。<br>
-                まずはお気軽にご相談ください。専門のナビゲーターが丁寧に対応いたします。
-            </p>
-            <div class="max-w-lg mx-auto bg-white p-8 rounded-xl shadow-2xl text-slate-800">
-                <form action="#" method="POST">
-                    <div class="mb-6">
-                        <label for="company_name" class="block text-sm font-medium text-slate-700 text-left mb-1">会社名</label>
-                        <input type="text" name="company_name" id="company_name" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-amber-500 focus:border-amber-500" placeholder="例：株式会社AIG">
-                    </div>
-                    <div class="mb-6">
-                        <label for="name" class="block text-sm font-medium text-slate-700 text-left mb-1">お名前 <span class="text-red-500">*</span></label>
-                        <input type="text" name="name" id="name" required class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-amber-500 focus:border-amber-500" placeholder="例：山田 太郎">
-                    </div>
-                    <div class="mb-6">
-                        <label for="email" class="block text-sm font-medium text-slate-700 text-left mb-1">メールアドレス <span class="text-red-500">*</span></label>
-                        <input type="email" name="email" id="email" required class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-amber-500 focus:border-amber-500" placeholder="例：taro.yamada@example.com">
-                    </div>
-                    <div class="mb-8">
-                        <label for="message" class="block text-sm font-medium text-slate-700 text-left mb-1">お問い合わせ内容</label>
-                        <textarea name="message" id="message" rows="4" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-amber-500 focus:border-amber-500" placeholder="ご相談内容、ご質問などをご自由にお書きください。"></textarea>
-                    </div>
-                    <div>
-                        <button type="submit" class="btn btn-primary w-full text-lg py-3">送信する</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </section>
-
-    <footer class="dark-section-bg py-12">
-        <div class="container mx-auto px-6">
-            <div class="grid md:grid-cols-3 gap-8 items-center">
-                <div class="text-center md:text-left">
-                    <div class="text-2xl font-black text-white">
-                        AIG <span class="text-amber-400">VALUE</span> NAVIGATOR
-                    </div>
-                    <p class="text-sm light-text mt-2">価値創造の新しい羅針盤</p>
-                </div>
-                <div class="text-center">
-                    <nav class="space-x-4">
-                        <a href="#" class="light-text hover:text-amber-400 text-sm">運営会社</a>
-                        <a href="#" class="light-text hover:text-amber-400 text-sm">プライバシーポリシー</a>
-                        <a href="#" class="light-text hover:text-amber-400 text-sm">利用規約</a>
-                    </nav>
-                </div>
-                <div class="text-center md:text-right">
-                    <p class="text-sm light-text">&copy; 2024 AIG Inc. All Rights Reserved.</p>
-                </div>
-            </div>
-        </div>
-    </footer>
+    </main>
 
     <script>
-        // スムーズスクロール
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const targetId = this.getAttribute('href');
-                const targetElement = document.querySelector(targetId);
-                if (targetElement) {
-                    targetElement.scrollIntoView({
-                        behavior: 'smooth'
-                    });
+        // Initial data for the Kanban board
+        let initialBoardData = [
+            {
+                id: "todo",
+                title: "ToDo",
+                cards: [
+                    { id: "card-1", text: "Docker について学ぶ" },
+                    { id: "card-2", text: "Web サーバーの知識を得る" },
+                    { id: "card-3", text: "WebSocket について学ぶ" },
+                    { id: "card-4", text: "検索エンジンについて学ぶ" },
+                    { id: "card-5", text: "Go を学ぶ" },
+                    { id: "card-6", text: "セキュリティについて学ぶ" }
+                ]
+            },
+            {
+                id: "inprogress",
+                title: "In Progress",
+                cards: [
+                    { id: "card-7", text: "ネットワークについて学ぶ" },
+                    { id: "card-8", text: "キャッシュを学ぶ" },
+                    { id: "card-9", text: "RESTful API を作る" },
+                    { id: "card-10", text: "Python を学ぶ" }
+                ]
+            },
+            {
+                id: "done",
+                title: "Done",
+                cards: [
+                    { id: "card-11", text: "AWS を使ってデプロイする" },
+                    { id: "card-12", text: "テストについて学ぶ" },
+                    { id: "card-13", text: "Node.js を学ぶ" }
+                ]
+            },
+            {
+                id: "archive",
+                title: "Archive",
+                cards: []
+            }
+        ];
+
+        // Function to generate a unique ID for cards
+        function generateCardId() {
+            return 'card-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+        }
+
+        // Function to generate a unique ID for columns
+        function generateColumnId() {
+            return 'column-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+        }
+
+        // Function to render a single card
+        function renderCard(cardData) {
+            const cardElement = document.createElement('div');
+            cardElement.id = cardData.id;
+            cardElement.classList.add('kanban-card');
+            cardElement.draggable = true;
+            cardElement.textContent = cardData.text;
+
+            cardElement.addEventListener('dragstart', (event) => {
+                event.dataTransfer.setData('text/plain', event.target.id);
+                event.target.classList.add('dragging');
+            });
+
+            cardElement.addEventListener('dragend', (event) => {
+                event.target.classList.remove('dragging');
+            });
+
+            return cardElement;
+        }
+
+        // Function to render a single column
+        function renderColumn(columnData) {
+            // Add a check for valid columnData
+            if (!columnData || typeof columnData.id === 'undefined' || typeof columnData.title === 'undefined' || !Array.isArray(columnData.cards)) {
+                console.error("Invalid columnData received in renderColumn:", columnData);
+                return null; // Return null if data is invalid
+            }
+
+            const columnContainer = document.createElement('div');
+            columnContainer.classList.add('kanban-column');
+            columnContainer.dataset.columnId = columnData.id;
+
+            const columnHeader = document.createElement('div');
+            columnHeader.classList.add('column-header');
+            columnHeader.innerHTML = `
+                <span>${columnData.title}</span>
+                <div class="column-header-icons">
+                    <i class="fas fa-ellipsis-h"></i>
+                    <i class="fas fa-plus column-add-card-quick"></i>
+                </div>
+            `;
+            columnContainer.appendChild(columnHeader);
+
+            const cardsContainer = document.createElement('div');
+            cardsContainer.classList.add('cards-container');
+            columnData.cards.forEach(card => {
+                cardsContainer.appendChild(renderCard(card));
+            });
+            columnContainer.appendChild(cardsContainer);
+
+            const addCardButton = document.createElement('div');
+            addCardButton.classList.add('add-card-button');
+            addCardButton.innerHTML = `<i class="fas fa-plus mr-2"></i> さらにカードを追加`;
+            columnContainer.appendChild(addCardButton);
+
+            const addCardForm = document.createElement('div');
+            addCardForm.classList.add('add-card-form');
+            addCardForm.innerHTML = `
+                <textarea placeholder="このカードのタイトルを入力..."></textarea>
+                <button type="button">カードを追加</button>
+                <i class="fas fa-times cancel-add-card"></i>
+            `;
+            columnContainer.appendChild(addCardForm);
+            
+            const showAddCardForm = () => {
+                addCardButton.style.display = 'none';
+                addCardForm.style.display = 'block';
+                addCardForm.querySelector('textarea').focus();
+            };
+
+            addCardButton.addEventListener('click', showAddCardForm);
+            columnHeader.querySelector('.column-add-card-quick').addEventListener('click', showAddCardForm);
+
+            addCardForm.querySelector('.cancel-add-card').addEventListener('click', () => {
+                addCardForm.style.display = 'none';
+                addCardButton.style.display = 'flex';
+                addCardForm.querySelector('textarea').value = '';
+            });
+
+            addCardForm.querySelector('button').addEventListener('click', () => {
+                const textarea = addCardForm.querySelector('textarea');
+                const cardText = textarea.value.trim();
+                if (cardText) {
+                    const newCardData = { id: generateCardId(), text: cardText };
+                    const columnIndex = initialBoardData.findIndex(col => col.id === columnData.id);
+                    if (columnIndex !== -1) {
+                        initialBoardData[columnIndex].cards.push(newCardData);
+                    }
+                    cardsContainer.appendChild(renderCard(newCardData));
+                    textarea.value = '';
+                    textarea.focus();
                 }
             });
+            
+            columnContainer.addEventListener('dragover', (event) => {
+                event.preventDefault(); 
+                const draggingCard = document.querySelector('.dragging');
+                if (!draggingCard) return;
+                if (event.currentTarget.contains(draggingCard)) {
+                     const afterElement = getDragAfterElement(cardsContainer, event.clientY);
+                     if (afterElement === draggingCard.nextSibling || (!afterElement && cardsContainer.lastChild === draggingCard)) {
+                         return;
+                     }
+                }
+                const afterElement = getDragAfterElement(cardsContainer, event.clientY);
+                if (afterElement == null) {
+                    cardsContainer.appendChild(draggingCard);
+                } else {
+                    cardsContainer.insertBefore(draggingCard, afterElement);
+                }
+            });
+
+            columnContainer.addEventListener('drop', (event) => {
+                event.preventDefault();
+                const cardId = event.dataTransfer.getData('text/plain');
+                const draggedCard = document.getElementById(cardId);
+                if (!draggedCard) return;
+
+                const targetColumnElement = event.currentTarget;
+                const targetColumnId = targetColumnElement.dataset.columnId;
+                const sourceColumnElement = draggedCard.closest('.kanban-column');
+                if (!sourceColumnElement) return;
+                const sourceColumnId = sourceColumnElement.dataset.columnId;
+
+                let cardToMove;
+                const sourceColIndex = initialBoardData.findIndex(col => col.id === sourceColumnId);
+                let cardIndexInSource = -1;
+
+                if (sourceColIndex !== -1) {
+                    cardIndexInSource = initialBoardData[sourceColIndex].cards.findIndex(c => c.id === cardId);
+                    if (cardIndexInSource !== -1) {
+                        cardToMove = initialBoardData[sourceColIndex].cards[cardIndexInSource];
+                    }
+                }
+
+                if (!cardToMove) {
+                    console.error("Could not find card data for ID:", cardId);
+                    return;
+                }
+
+                if (sourceColIndex !== -1 && cardIndexInSource !== -1) {
+                    initialBoardData[sourceColIndex].cards.splice(cardIndexInSource, 1);
+                }
+
+                const targetColIndex = initialBoardData.findIndex(col => col.id === targetColumnId);
+                if (targetColIndex !== -1) {
+                    const targetCardsContainer = targetColumnElement.querySelector('.cards-container');
+                    const cardsInTargetColumn = Array.from(targetCardsContainer.querySelectorAll('.kanban-card'));
+                    let insertAtIndex = cardsInTargetColumn.findIndex(c => c.id === cardId);
+                    if (insertAtIndex === -1) {
+                        insertAtIndex = initialBoardData[targetColIndex].cards.length;
+                    }
+                    initialBoardData[targetColIndex].cards.splice(insertAtIndex, 0, cardToMove);
+                }
+            });
+            return columnContainer;
+        }
+
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.kanban-card:not(.dragging)')];
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        function renderBoard() {
+            const boardElement = document.getElementById('kanbanBoard');
+            // Add a check for boardElement
+            if (!boardElement) {
+                console.error("Kanban board element not found in renderBoard!");
+                return;
+            }
+            boardElement.innerHTML = '';
+            initialBoardData.forEach(columnData => {
+                const columnElement = renderColumn(columnData);
+                if (columnElement) { // Only append if renderColumn returned a valid element
+                    boardElement.appendChild(columnElement);
+                }
+            });
+        }
+
+        // Wait for the DOM to be fully loaded before setting up event listeners and rendering
+        document.addEventListener('DOMContentLoaded', () => {
+            renderBoard(); // Initial render of the board
+
+            const createListButton = document.getElementById('createListButton');
+            if (createListButton) {
+                createListButton.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    const listTitleInput = prompt("新しいリストのタイトルを入力してください:", "新しいリスト");
+
+                    // Handle if the user cancels the prompt
+                    if (listTitleInput === null) {
+                        return; // Do nothing if cancelled
+                    }
+
+                    const trimmedTitle = listTitleInput.trim();
+
+                    // Handle if the title is empty after trimming
+                    if (trimmedTitle === "") {
+                        alert("リストのタイトルは空にできません。");
+                        return;
+                    }
+
+                    const newColumnData = {
+                        id: generateColumnId(),
+                        title: trimmedTitle,
+                        cards: []
+                    };
+                    initialBoardData.push(newColumnData);
+                    renderBoard(); // Re-render the entire board with the new list
+                });
+            } else {
+                console.error("Create List Button not found after DOMContentLoaded.");
+            }
         });
-
-        // FAQのアコーディオン動作（<details>タグでネイティブ対応しているが、よりスムーズなアニメーションが必要な場合はJSで制御）
-        // Tailwind CSSのgroup-openユーティリティとCSSトランジションで対応しているため、ここでは追加のJSは不要
     </script>
-
 </body>
 </html>

@@ -119,7 +119,7 @@
             <h1 class="text-2xl font-bold">kanban</h1>
         </div>
         <div>
-            <a href="#" class="text-sm hover:bg-blue-600 px-3 py-2 rounded-md"><i class="fas fa-plus mr-1"></i> リストを作成</a>
+            <a href="#" id="createListButton" class="text-sm hover:bg-blue-600 px-3 py-2 rounded-md"><i class="fas fa-plus mr-1"></i> リストを作成</a>
             <a href="#" class="text-sm hover:bg-blue-600 px-3 py-2 rounded-md"><i class="fas fa-sign-out-alt mr-1"></i> サインアウト</a>
         </div>
     </header>
@@ -131,7 +131,7 @@
 
     <script>
         // Initial data for the Kanban board
-        const initialBoardData = [
+        let initialBoardData = [ // Changed to let to allow modification
             {
                 id: "todo",
                 title: "ToDo",
@@ -171,9 +171,15 @@
         ];
 
         // Function to generate a unique ID for cards
-        function generateId() {
+        function generateCardId() {
             return 'card-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
         }
+
+        // Function to generate a unique ID for columns
+        function generateColumnId() {
+            return 'column-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+        }
+
 
         // Function to render a single card
         function renderCard(cardData) {
@@ -187,12 +193,12 @@
             cardElement.addEventListener('dragstart', (event) => {
                 event.dataTransfer.setData('text/plain', event.target.id);
                 event.target.classList.add('dragging');
-                console.log('Drag start:', event.target.id);
+                // console.log('Drag start:', event.target.id);
             });
 
             cardElement.addEventListener('dragend', (event) => {
                 event.target.classList.remove('dragging');
-                console.log('Drag end:', event.target.id);
+                // console.log('Drag end:', event.target.id);
             });
 
             return cardElement;
@@ -211,8 +217,7 @@
                 <span>${columnData.title}</span>
                 <div class="column-header-icons">
                     <i class="fas fa-ellipsis-h"></i>
-                    <i class="fas fa-plus"></i>
-                </div>
+                    <i class="fas fa-plus column-add-card-quick"></i> </div>
             `;
             columnContainer.appendChild(columnHeader);
 
@@ -239,13 +244,19 @@
                 <i class="fas fa-times cancel-add-card"></i>
             `;
             columnContainer.appendChild(addCardForm);
-
-            // Event listener for "Add Card" button
-            addCardButton.addEventListener('click', () => {
+            
+            const showAddCardForm = () => {
                 addCardButton.style.display = 'none';
                 addCardForm.style.display = 'block';
                 addCardForm.querySelector('textarea').focus();
-            });
+            };
+
+            // Event listener for "Add Card" button
+            addCardButton.addEventListener('click', showAddCardForm);
+            
+            // Event listener for plus icon in column header to add card
+            columnHeader.querySelector('.column-add-card-quick').addEventListener('click', showAddCardForm);
+
 
             // Event listener for "Cancel" in add card form
             addCardForm.querySelector('.cancel-add-card').addEventListener('click', () => {
@@ -259,7 +270,7 @@
                 const textarea = addCardForm.querySelector('textarea');
                 const cardText = textarea.value.trim();
                 if (cardText) {
-                    const newCardData = { id: generateId(), text: cardText };
+                    const newCardData = { id: generateCardId(), text: cardText };
                     // Find the column data in initialBoardData and add the card
                     const columnIndex = initialBoardData.findIndex(col => col.id === columnData.id);
                     if (columnIndex !== -1) {
@@ -267,18 +278,27 @@
                     }
                     cardsContainer.appendChild(renderCard(newCardData));
                     textarea.value = ''; // Clear textarea
-                    addCardForm.style.display = 'none';
-                    addCardButton.style.display = 'flex';
+                    // Keep the form open for adding multiple cards quickly if desired, or hide it:
+                    // addCardForm.style.display = 'none';
+                    // addCardButton.style.display = 'flex';
+                    textarea.focus(); // Keep focus to add another card
                 }
             });
             
             // Drag and drop event listeners for columns (for dropping cards)
             columnContainer.addEventListener('dragover', (event) => {
-                event.preventDefault(); // Necessary to allow dropping
+                event.preventDefault(); 
                 const draggingCard = document.querySelector('.dragging');
-                if (draggingCard && event.currentTarget.contains(draggingCard)) {
-                    return; // Don't do anything if dragging over the same column
+                if (!draggingCard) return;
+
+                // Avoid flickering if dragging over the same column and not changing position
+                if (event.currentTarget.contains(draggingCard)) {
+                     const afterElement = getDragAfterElement(cardsContainer, event.clientY);
+                     if (afterElement === draggingCard.nextSibling || (!afterElement && cardsContainer.lastChild === draggingCard)) {
+                         return;
+                     }
                 }
+                
                 const afterElement = getDragAfterElement(cardsContainer, event.clientY);
                 if (afterElement == null) {
                     cardsContainer.appendChild(draggingCard);
@@ -291,45 +311,58 @@
                 event.preventDefault();
                 const cardId = event.dataTransfer.getData('text/plain');
                 const draggedCard = document.getElementById(cardId);
-                const targetColumnId = columnContainer.dataset.columnId;
-                const sourceColumnId = draggedCard.closest('.kanban-column').dataset.columnId;
+                if (!draggedCard) return;
 
-                console.log(`Dropped card ${cardId} into column ${targetColumnId} from ${sourceColumnId}`);
+                const targetColumnElement = event.currentTarget; // The column where the card is dropped
+                const targetColumnId = targetColumnElement.dataset.columnId;
+                const sourceColumnElement = draggedCard.closest('.kanban-column');
+                if (!sourceColumnElement) return; // Should not happen if drag started correctly
+                const sourceColumnId = sourceColumnElement.dataset.columnId;
 
-                // Update data model (simplified for now)
-                // In a real app, you'd update initialBoardData and re-render or directly manipulate
-                const cardDataText = draggedCard.textContent; // Or get from a data attribute
-                
-                // Remove from old column data
+                // console.log(`Dropped card ${cardId} into column ${targetColumnId} from ${sourceColumnId}`);
+
+                // If dropped in the same column, the visual update is already handled by dragover.
+                // We only need to update the data model if it's a different column OR if the order changed.
+
+                const cardDataText = draggedCard.textContent; // Or get from a data attribute like cardData.text
+
+                // Find card data
+                let cardToMove;
                 const sourceColIndex = initialBoardData.findIndex(col => col.id === sourceColumnId);
+                let cardIndexInSource = -1;
+
                 if (sourceColIndex !== -1) {
-                    const cardIndex = initialBoardData[sourceColIndex].cards.findIndex(c => c.id === cardId);
-                    if (cardIndex !== -1) {
-                        initialBoardData[sourceColIndex].cards.splice(cardIndex, 1);
+                    cardIndexInSource = initialBoardData[sourceColIndex].cards.findIndex(c => c.id === cardId);
+                    if (cardIndexInSource !== -1) {
+                        cardToMove = initialBoardData[sourceColIndex].cards[cardIndexInSource];
                     }
                 }
 
-                // Add to new column data
+                if (!cardToMove) {
+                    console.error("Could not find card data for ID:", cardId);
+                    return;
+                }
+
+                // Remove from old column data
+                if (sourceColIndex !== -1 && cardIndexInSource !== -1) {
+                    initialBoardData[sourceColIndex].cards.splice(cardIndexInSource, 1);
+                }
+
+                // Add to new column data at the correct position
                 const targetColIndex = initialBoardData.findIndex(col => col.id === targetColumnId);
                 if (targetColIndex !== -1) {
-                     // Determine position to insert
-                    const afterElement = getDragAfterElement(cardsContainer, event.clientY);
-                    const newCardData = { id: cardId, text: cardDataText }; // Recreate card data
-                    
-                    let insertAtIndex = initialBoardData[targetColIndex].cards.length; // Default to end
-                    if (afterElement) {
-                        const afterElementId = afterElement.id;
-                        insertAtIndex = initialBoardData[targetColIndex].cards.findIndex(c => c.id === afterElementId);
+                    const targetCardsContainer = targetColumnElement.querySelector('.cards-container');
+                    const cardsInTargetColumn = Array.from(targetCardsContainer.querySelectorAll('.kanban-card'));
+                    let insertAtIndex = cardsInTargetColumn.findIndex(c => c.id === cardId); // Find its new position among siblings
+
+                    if (insertAtIndex === -1) { // Should be found if it was appended/inserted correctly
+                        insertAtIndex = initialBoardData[targetColIndex].cards.length; // Default to end if something went wrong
                     }
-                    initialBoardData[targetColIndex].cards.splice(insertAtIndex, 0, newCardData);
+                    
+                    initialBoardData[targetColIndex].cards.splice(insertAtIndex, 0, cardToMove);
                 }
                 
-                // Append to the new visual column (already handled by dragover if simple append)
-                // If not simply appending, ensure the DOM reflects the new order.
-                // The current dragover logic already places it visually.
-                // We just need to ensure the data model is consistent.
-
-                console.log("Updated board data:", JSON.parse(JSON.stringify(initialBoardData))); // Deep copy for logging
+                // console.log("Updated board data:", JSON.parse(JSON.stringify(initialBoardData)));
             });
 
 
@@ -360,6 +393,27 @@
                 boardElement.appendChild(renderColumn(column));
             });
         }
+
+        // Event listener for "リストを作成" (Create List) button
+        const createListButton = document.getElementById('createListButton');
+        if (createListButton) { // Check if the button exists
+            createListButton.addEventListener('click', (event) => {
+                event.preventDefault(); // Prevent default anchor behavior
+                const listTitle = prompt("新しいリストのタイトルを入力してください:", "新しいリスト");
+                if (listTitle && listTitle.trim() !== "") {
+                    const newColumnData = {
+                        id: generateColumnId(), // Use new ID generator for columns
+                        title: listTitle.trim(),
+                        cards: [] // New list starts with no cards
+                    };
+                    initialBoardData.push(newColumnData); // Add to the data model
+                    renderBoard(); // Re-render the entire board
+                }
+            });
+        } else {
+            console.error("Create List Button not found");
+        }
+
 
         // Initial render of the board
         document.addEventListener('DOMContentLoaded', renderBoard);
